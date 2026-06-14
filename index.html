@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hunting Unit Scout</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --id: #3fb950; --or: #f0883e; --az: #58a6ff; --wa: #a371f7;
+    --green: #3fb950; --yellow: #d29922; --red: #f85149;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+  header p { font-size: 12px; color: var(--muted); }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .filters { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; width: 210px; flex-shrink: 0; }
+  .filter-group label.group-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+  .check-item { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 2px 0; font-size: 12px; }
+  .check-item input { accent-color: var(--accent); cursor: pointer; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ID { background: var(--id); }
+  .dot-OR { background: var(--or); }
+  .dot-AZ { background: var(--az); }
+  .dot-WA { background: var(--wa); }
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .chart-panel { padding: 16px; flex: 0 0 320px; position: relative; }
+  .chart-panel canvas { width: 100% !important; height: 280px !important; }
+  .kpis { display: flex; gap: 12px; padding: 0 16px 12px; }
+  .kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; flex: 1; }
+  .kpi .val { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .kpi .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .table-wrap { flex: 1; overflow: auto; padding: 0 16px 16px; }
+  table#dataTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #dataTable th { background: var(--bg2); color: var(--muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); position: sticky; top: 0; cursor: pointer; white-space: nowrap; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  #dataTable th:hover { color: var(--text); }
+  #dataTable th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+  #dataTable th.sort-asc::after { content: ' ↑'; color: var(--accent); }
+  #dataTable th.sort-icon::after { content: ' ⇅'; opacity: 0.3; }
+  #dataTable td { padding: 7px 10px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+  #dataTable tr:hover td { background: #1c2128; }
+  .highlight { color: var(--green); font-weight: 600; }
+  .null-val { color: #484f58; }
+  .score-bar { display: inline-block; height: 6px; background: var(--accent); border-radius: 3px; margin-right: 6px; vertical-align: middle; opacity: 0.7; }
+  .state-badge { border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
+  .state-ID { background: #0d2e1a; color: var(--id); }
+  .state-OR { background: #2e1a0d; color: var(--or); }
+  .state-AZ { background: #0d1c2e; color: var(--az); }
+  .state-WA { background: #1d1030; color: var(--wa); }
+  .species-badge { border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 600; background: #21262d; color: var(--muted); }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .toggle-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
+  .toggle-btn.active { background: #1c2d1e; border-color: var(--id); color: var(--text); }
+  .slider-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val { color: var(--accent); font-weight: 600; min-width: 36px; text-align: right; }
+  .filter-divider { border: none; border-top: 1px solid var(--border); }
+  .species-disabled { opacity: 0.4; pointer-events: none; }
+  .coming-soon { font-size: 10px; color: var(--muted); font-style: italic; margin-left: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🦌 Hunting Unit Scout</h1>
+    <p>Draw Odds vs Harvest Rate &middot; 2024&ndash;2025 Data &middot; WA &middot; ID &middot; OR &middot; AZ</p>
+  </div>
+</header>
+
+<div class="main">
+  <div class="filters">
+
+    <div class="filter-group">
+      <label class="group-label">Species</label>
+      <label class="check-item"><input type="checkbox" data-filter="species" value="ELK" checked> Elk</label>
+      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="MULE" disabled> Mule Deer <span class="coming-soon">soon</span></label>
+      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="WHITETAIL" disabled> Whitetail <span class="coming-soon">soon</span></label>
+      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="COUES" disabled> Coues <span class="coming-soon">soon</span></label>
+      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="BLACKTAIL" disabled> Blacktail <span class="coming-soon">soon</span></label>
+    </div>
+
+    <hr class="filter-divider">
+
+    <div class="filter-group">
+      <label class="group-label">State</label>
+      <label class="check-item"><input type="checkbox" data-filter="state" value="WA" checked> <span class="dot dot-WA"></span> Washington</label>
+      <label class="check-item"><input type="checkbox" data-filter="state" value="ID" checked> <span class="dot dot-ID"></span> Idaho</label>
+      <label class="check-item"><input type="checkbox" data-filter="state" value="OR" checked> <span class="dot dot-OR"></span> Oregon</label>
+      <label class="check-item"><input type="checkbox" data-filter="state" value="AZ" checked> <span class="dot dot-AZ"></span> Arizona</label>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Draw System</label>
+      <label class="check-item"><input type="checkbox" data-filter="odds" value="P" checked> Pointless / random</label>
+      <label class="check-item"><input type="checkbox" data-filter="odds" value="R" checked> Preference pts (OR)</label>
+      <label class="check-item"><input type="checkbox" data-filter="odds" value="B" checked> Bonus pts (AZ)</label>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Bag Type</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="AE" checked> Antlered</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="AA" checked> Antlered/Antlerless</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="BE" checked> Bull Elk</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="AY" checked> Any Elk</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="OB" checked> One Bull</label>
+      <label class="check-item"><input type="checkbox" data-filter="bag" value="3P" checked> One 3pt+ Bull</label>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Season Start</label>
+      <div class="toggle-row" id="monthBtns">
+        <button class="toggle-btn active" data-month="8">Aug</button>
+        <button class="toggle-btn active" data-month="9">Sep</button>
+        <button class="toggle-btn active" data-month="10">Oct</button>
+        <button class="toggle-btn active" data-month="11">Nov</button>
+        <button class="toggle-btn active" data-month="12">Dec</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Min Draw Odds</label>
+      <div class="slider-row">
+        <input type="range" id="minDraw" min="0" max="30" step="0.5" value="0">
+        <span class="slider-val" id="drawOddsVal">0%</span>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Min Harvest Rate</label>
+      <div class="slider-row">
+        <input type="range" id="minHarvest" min="0" max="90" step="5" value="0">
+        <span class="slider-val" id="harvestVal">0%</span>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="group-label">Min Public Land</label>
+      <div class="slider-row">
+        <input type="range" id="minPub" min="0" max="95" step="5" value="0">
+        <span class="slider-val" id="pubPctVal">0%</span>
+      </div>
+    </div>
+
+  </div><!-- /filters -->
+
+  <div class="content">
+    <div class="chart-panel">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="val" id="kpiCount">–</div><div class="lbl">Units</div></div>
+      <div class="kpi"><div class="val" id="kpiDraw">–</div><div class="lbl">Avg Draw Odds</div></div>
+      <div class="kpi"><div class="val" id="kpiHarvest">–</div><div class="lbl">Avg Harvest Rate</div></div>
+    </div>
+    <div class="table-wrap">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th data-col="state" class="sort-icon">State</th>
+            <th data-col="species" class="sort-icon">Species</th>
+            <th data-col="unit" class="sort-icon">Unit</th>
+            <th data-col="bag" class="sort-icon">Bag</th>
+            <th data-col="drawOdds" class="sort-icon">Draw %</th>
+            <th data-col="harvestRate" class="sort-icon">Harvest %</th>
+            <th data-col="tags" class="sort-icon">Tags</th>
+            <th data-col="month" class="sort-icon">Start</th>
+            <th data-col="pub" class="sort-icon">Public %</th>
+            <th data-col="score" class="sort-desc">Value Score</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+// [state, unit, species, drawOdds, harvestRate, tags, startMonth, publicPct, bagType, oddsType]
+// species: ELK, MULE, WHITETAIL, COUES, BLACKTAIL
+// bagType: AE=Antlered, AA=Antlered/Antlerless, AY=Any, BE=Bull Elk, 3P=One 3pt+ Bull, OB=One Bull
+// oddsType: P=Pointless, R=Preference pts (OR), B=Bonus pts (AZ)
+const RAW = [
+// ── WASHINGTON (2024 WDFW special permit, antlered hunts) ──
+["WA","Prescott","ELK",2.17,100,3,10,null,"AE","P"],
+["WA","Blue Creek","ELK",1.52,100,5,10,null,"AE","P"],
+["WA","Watershed","ELK",2.49,30,15,10,null,"AE","P"],
+["WA","Tucannon","ELK",0.56,100,3,10,null,"AE","P"],
+["WA","Wenaha West","ELK",1.2,80,5,10,null,"AE","P"],
+["WA","Wenaha East","ELK",1.12,100,5,10,null,"AE","P"],
+["WA","Mountain View","ELK",0.87,60,5,10,null,"AE","P"],
+["WA","Lick Creek","ELK",0.58,100,2,10,null,"AE","P"],
+["WA","Couse","ELK",3.91,75,5,10,null,"AE","P"],
+["WA","Couse","ELK",3.3,100,3,10,null,"AE","P"],
+["WA","Colockum","ELK",0.57,76,22,10,null,"AE","P"],
+["WA","Blackrock Ranches","ELK",1.27,100,2,10,null,"AE","P"],
+["WA","Alkali","ELK",3.48,58,35,10,null,"AE","P"],
+["WA","Nooksack","ELK",1.53,56,13,10,null,"AE","P"],
+["WA","Green River","ELK",0.84,67,8,10,null,"AE","P"],
+["WA","South Rainier","ELK",1.48,33,3,10,null,"AE","P"],
+["WA","Toutle","ELK",2.45,74,25,10,null,"AE","P"],
+["WA","Mount Whittier","ELK",1.35,100,2,10,null,"AE","P"],
+["WA","Norway Pass","ELK",0.7,50,2,10,null,"AE","P"],
+["WA","Mudflow","ELK",0.68,100,8,10,null,"AE","P"],
+["WA","Wenaha West","ELK",2.35,100,4,10,null,"AE","P"],
+["WA","Couse","ELK",12.82,100,5,10,null,"AE","P"],
+["WA","Colockum","ELK",0.83,50,11,10,null,"AE","P"],
+["WA","Teanaway","ELK",0.53,50,2,10,null,"AE","P"],
+["WA","Peaches Ridge","ELK",0.8,40,6,10,null,"AE","P"],
+["WA","Observatory","ELK",1.65,33,9,10,null,"AE","P"],
+["WA","Goose Prairie","ELK",1.26,25,6,10,null,"AE","P"],
+["WA","Bethel","ELK",3.11,60,6,10,null,"AE","P"],
+["WA","Rimrock","ELK",3.42,33,15,10,null,"AE","P"],
+["WA","Alkali","ELK",9.44,60,17,10,null,"AE","P"],
+["WA","Nooksack","ELK",1.95,40,8,10,null,"AE","P"],
+["WA","Toutle","ELK",2.35,40,14,10,null,"AE","P"],
+["WA","Mudflow","ELK",1.24,50,9,10,null,"AE","P"],
+["WA","Peninsula","ELK",1.18,50,2,10,null,"AE","P"],
+["WA","White River","ELK",3.1,43,23,10,null,"AE","P"],
+["WA","Lick Creek","ELK",1.8,100,2,10,null,"AE","P"],
+["WA","Couse","ELK",8.33,33,5,10,null,"AE","P"],
+["WA","Colockum","ELK",0.73,86,11,10,null,"AE","P"],
+["WA","Teanaway","ELK",1.39,100,2,10,null,"AE","P"],
+["WA","Peaches Ridge","ELK",0.61,33,4,10,null,"AE","P"],
+["WA","Observatory","ELK",1.48,25,8,10,null,"AE","P"],
+["WA","Bethel","ELK",1.69,33,3,10,null,"AE","P"],
+["WA","Rimrock","ELK",2.18,25,6,10,null,"AE","P"],
+["WA","Cowiche","ELK",0.77,33,3,10,null,"AE","P"],
+["WA","Alkali","ELK",3.45,83,7,10,null,"AE","P"],
+["WA","Nooksack","ELK",1.31,57,8,10,null,"AE","P"],
+["WA","Toutle","ELK",1.59,75,9,10,null,"AE","P"],
+["WA","Mudflow","ELK",1.49,67,11,10,null,"AE","P"],
+["WA","Silver Dollar","ELK",2.76,88,11,10,null,"AE","P"],
+["WA","Green River","ELK",0.6,100,2,10,null,"AE","P"],
+["WA","Mudflow","ELK",0.68,100,5,10,null,"AE","P"],
+["WA","Little Naches","ELK",0.52,100,2,10,null,"AE","P"],
+["WA","Alkali","ELK",2.67,67,4,10,null,"AE","P"],
+["WA","Corral Canyon","ELK",5.71,100,2,10,null,"AE","P"],
+["WA","Mudflow","ELK",1.29,60,5,10,null,"AE","P"],
+["WA","Peshastin","ELK",0.58,100,5,10,null,"AE","P"],
+["WA","Rimrock","ELK",1.12,32,27,10,null,"AE","P"],
+["WA","Sauk","ELK",0.92,67,6,10,null,"AE","P"],
+["WA","Olympic","ELK",1.2,60,6,10,null,"AE","P"],
+["WA","Skokomish","ELK",1.77,40,8,10,null,"AE","P"],
+["WA","White River","ELK",3.24,55,45,10,null,"AE","P"],
+["WA","Sauk","ELK",3.02,50,9,10,null,"AE","P"],
+["WA","Olympic","ELK",2.04,67,6,10,null,"AE","P"],
+["WA","Sauk","ELK",1.83,100,7,10,null,"AE","P"],
+["WA","Norway Pass","ELK",0.81,33,4,10,null,"AE","P"],
+["WA","Olympic","ELK",1.8,33,4,10,null,"AE","P"],
+["WA","White River","ELK",1.18,43,11,10,null,"AE","P"],
+// ── IDAHO (Huntin' Fool 2025) ──
+["ID","Unit 63","ELK",100,null,0,8,99,"AA","P"],
+["ID","Unit 30A-1","ELK",43.54,null,1,8,72,"AA","P"],
+["ID","Unit 13","ELK",31.55,47,33,10,28,"AA","P"],
+["ID","Unit 51-1","ELK",30.55,null,2,8,88,"AA","P"],
+["ID","Unit 39-3","ELK",27.62,26,5,10,67,"AA","P"],
+["ID","Unit 60-2","ELK",16.18,null,10,11,79,"AA","P"],
+["ID","Unit 61","ELK",15.99,38,5,11,82,"AE","P"],
+["ID","Unit 62-1","ELK",14.6,27,4,11,46,"AA","P"],
+["ID","Unit 31","ELK",14.59,null,7,11,50,"AE","P"],
+["ID","Unit 70-1","ELK",13.94,41,25,10,33,"AE","P"],
+["ID","Unit 63","ELK",13.81,58,10,8,99,"AA","P"],
+["ID","Unit 52","ELK",12.32,48,5,10,68,"AE","P"],
+["ID","Unit 48","ELK",12.2,43,15,10,84,"AE","P"],
+["ID","Unit 31","ELK",9.92,57,7,10,50,"AE","P"],
+["ID","Unit 49","ELK",9.79,53,17,10,66,"AE","P"],
+["ID","Unit 66-1","ELK",9.64,null,5,11,95,"AE","P"],
+["ID","Unit 31","ELK",9.14,41,5,10,50,"AA","P"],
+["ID","Unit 37A","ELK",9,null,10,10,94,"AE","P"],
+["ID","Unit 37","ELK",8.04,61,10,10,89,"AE","P"],
+["ID","Unit 51","ELK",7.75,59,12,11,92,"AE","P"],
+["ID","Unit 44","ELK",7.23,35,20,10,52,"AE","P"],
+["ID","Unit 66A-1","ELK",6.97,null,35,10,59,"AE","P"],
+["ID","Unit 29","ELK",6.77,60,18,10,88,"AE","P"],
+["ID","Unit 30","ELK",6.74,57,15,11,79,"AE","P"],
+["ID","Unit 60-2","ELK",6.5,null,10,11,79,"AA","P"],
+["ID","Unit 45","ELK",6.47,43,12,10,65,"AE","P"],
+["ID","Unit 52A-1","ELK",6.27,null,10,10,63,"AE","P"],
+["ID","Unit 60-1","ELK",6.21,69,10,10,79,"AE","P"],
+["ID","Unit 31","ELK",6.21,57,5,10,50,"AA","P"],
+["ID","Unit 36A-1","ELK",5.89,null,6,10,97,"AE","P"],
+["ID","Unit 43","ELK",5.36,42,12,10,71,"AE","P"],
+["ID","Unit 36A-2","ELK",5.27,null,12,10,94,"AE","P"],
+["ID","Unit 19A","ELK",5.05,null,1,10,99,"AE","P"],
+["ID","Unit 58-1","ELK",5.04,66,7,11,86,"AE","P"],
+["ID","Unit 52","ELK",4.89,46,2,12,68,"AA","P"],
+["ID","Unit 18","ELK",4.63,53,8,10,85,"AE","P"],
+["ID","Unit 50-1","ELK",4.58,57,6,10,81,"AE","P"],
+["ID","Unit 41","ELK",4.28,41,3,10,80,"AE","P"],
+["ID","Unit 11","ELK",4.07,56,4,10,27,"AE","P"],
+["ID","Unit 75-1","ELK",3.71,18,2,10,52,"AE","P"],
+["ID","Unit 41","ELK",3.63,39,3,11,80,"AE","P"],
+["ID","Unit 46","ELK",3.36,49,4,12,83,"AE","P"],
+["ID","Unit 48","ELK",2.77,56,2,10,84,"AE","P"],
+["ID","Unit 43","ELK",2.64,41,2,10,71,"AE","P"],
+["ID","Unit 49","ELK",2.48,44,2,10,66,"AE","P"],
+["ID","Unit 51","ELK",2.22,77,1,10,92,"AE","P"],
+["ID","Unit 23","ELK",2.18,16,1,10,76,"AE","P"],
+["ID","Unit 30-1","ELK",2.15,88,3,10,85,"AE","P"],
+["ID","Unit 55-1","ELK",2.03,65,5,10,57,"AE","P"],
+["ID","Unit 66A-1","ELK",1.95,null,5,10,59,"AE","P"],
+["ID","Unit 70-1","ELK",1.76,43,2,10,33,"AE","P"],
+["ID","Unit 40","ELK",1.68,46,6,10,76,"AE","P"],
+["ID","Unit 46-1","ELK",1.65,66,1,10,82,"AE","P"],
+["ID","Unit 1-2","ELK",1.34,77,2,8,68,"AA","P"],
+["ID","Unit 44","ELK",1,94,2,10,52,"AE","P"],
+["ID","Unit 42","ELK",0.67,72,1,10,96,"AE","P"],
+["ID","Unit 40-1","ELK",0.36,74,1,9,82,"AE","P"],
+["ID","Unit 54","ELK",0.3,57,2,10,60,"AE","P"],
+// ── OREGON (Huntin' Fool 2025) ──
+["OR","E Central Cascades-234X","ELK",100,17,66,10,75,"OB","P"],
+["OR","Sprague No. 2-233Y","ELK",95.52,3,5,11,75,"OB","P"],
+["OR","76","ELK",59.58,2,2,10,61,"OB","P"],
+["OR","36","ELK",8.09,21,1,10,57,"OB","P"],
+["OR","54","ELK",0,79,2,10,45,"OB","R"],
+["OR","56","ELK",0,61,2,10,73,"OB","R"],
+["OR","59","ELK",0,49,8,11,94,"OB","R"],
+["OR","26","ELK",0,30,4,11,49,"OB","R"],
+["OR","46","ELK",0,13,20,10,68,"OB","R"],
+["OR","53","ELK",0,36,15,10,25,"OB","R"],
+["OR","61","ELK",0,33,15,10,74,"OB","R"],
+["OR","63","ELK",0,19,12,10,57,"OB","R"],
+["OR","47","ELK",0,16,20,10,41,"OB","R"],
+["OR","74","ELK",0,14,2,11,70,"OB","R"],
+["OR","24","ELK",0,18,45,11,34,"3P","R"],
+["OR","10","ELK",0,18,66,11,27,"3P","R"],
+["OR","10","ELK",0,22,66,11,27,"3P","R"],
+["OR","76","ELK",0,3,6,11,61,"OB","R"],
+["OR","75","ELK",0,8,12,11,56,"OB","R"],
+["OR","75","ELK",0,6,7,10,56,"OB","R"],
+["OR","72","ELK",0,11,35,11,67,"OB","R"],
+["OR","60","ELK",0,12,24,11,75,"OB","R"],
+["OR","60","ELK",0,12,24,10,75,"OB","R"],
+["OR","45","ELK",0,22,13,11,16,"OB","R"],
+["OR","45","ELK",0,24,13,10,16,"OB","R"],
+["OR","S Fossil Private-245B1","ELK",0,44,6,10,2,"OB","R"],
+["OR","N Fossil Private-245A1","ELK",0,30,7,10,0,"OB","R"],
+["OR","32","ELK",0,5,3,10,35,"OB","R"],
+["OR","72","ELK",0,12,35,10,67,"OB","R"],
+["OR","N Sumpter-251A","ELK",0,17,41,10,54,"OB","R"],
+["OR","58","ELK",0,35,19,11,49,"OB","R"],
+["OR","25","ELK",0,33,null,10,null,"OB","R"],
+["OR","57","ELK",0,28,27,10,21,"OB","R"],
+["OR","48","ELK",0,33,30,10,35,"OB","R"],
+["OR","49","ELK",0,34,23,10,35,"OB","R"],
+["OR","SE Cascades-231X","ELK",0,null,44,10,46,"OB","R"],
+["OR","38","ELK",0,18,3,11,29,"OB","R"],
+["OR","27","ELK",0,40,3,11,83,"OB","R"],
+["OR","38","ELK",0,21,3,10,29,"OB","R"],
+["OR","62","ELK",0,26,16,10,76,"OB","R"],
+// ── ARIZONA (Huntin' Fool 2025) ──
+["AZ","Unit 3A","ELK",7.87,53.49,5,12,30,"AY","B"],
+["AZ","Unit 4B","ELK",7.87,53.49,5,12,47,"AY","B"],
+["AZ","Unit 7E","ELK",2.46,25.37,40,11,76,"BE","B"],
+["AZ","Unit 32","ELK",2.24,0,1,10,74,"AY","B"],
+["AZ","Unit 28","ELK",2.24,0,1,10,86,"AY","B"],
+["AZ","Unit 31","ELK",2.24,0,1,10,86,"AY","B"],
+["AZ","Unit 6A","ELK",2.21,68.97,5,10,95,"AY","B"],
+["AZ","Unit 22N","ELK",1.72,38.59,30,11,94,"BE","B"],
+["AZ","Unit 19A","ELK",1.71,0,3,11,71,"BE","B"],
+["AZ","Unit 22N","ELK",1.66,36.24,27,12,94,"BE","B"],
+["AZ","Unit 4B","ELK",1.64,23.48,17,11,47,"BE","B"],
+["AZ","Unit 5A","ELK",1.42,40.37,33,11,69,"BE","B"],
+["AZ","Unit 10","ELK",1.40,42.86,1,11,39,"AY","B"],
+["AZ","Unit 19B","ELK",1.28,34.21,15,11,39,"AY","B"],
+["AZ","Unit 17B","ELK",1.28,34.21,15,11,79,"AY","B"],
+["AZ","Unit 18B","ELK",1.28,34.21,15,11,60,"AY","B"],
+["AZ","Unit 20A","ELK",1.28,34.21,15,11,82,"AY","B"],
+["AZ","Unit 17A","ELK",1.28,34.21,15,11,71,"AY","B"],
+["AZ","Unit 20C","ELK",1.28,34.21,15,11,78,"AY","B"],
+["AZ","Unit 4A","ELK",1.26,34.27,17,11,68,"BE","B"],
+["AZ","Unit 15B","ELK",1.21,39.71,10,11,67,"BE","B"],
+["AZ","Unit 18A","ELK",1.21,39.71,10,11,52,"BE","B"],
+["AZ","Unit 15A","ELK",1.21,39.71,10,11,80,"BE","B"],
+["AZ","Unit 8","ELK",1.20,25.43,50,11,95,"BE","B"],
+["AZ","Unit 4B","ELK",1.0,53.33,1,10,47,"AY","B"],
+["AZ","Unit 5B","ELK",0.98,40.38,77,11,84,"BE","B"],
+["AZ","Unit 6B","ELK",0.94,39.25,17,11,96,"BE","B"],
+["AZ","Unit 7W","ELK",0.88,30.69,45,11,88,"BE","B"],
+["AZ","Unit 6A","ELK",0.82,82,null,11,95,"BE","B"],
+["AZ","Unit 2A","ELK",0.82,null,2,10,45,"AY","B"],
+["AZ","Unit 2B","ELK",0.82,null,2,10,58,"AY","B"],
+["AZ","Unit 3A","ELK",0.80,50,1,10,30,"AY","B"],
+["AZ","Unit 3C","ELK",0.80,50,1,10,82,"AY","B"],
+["AZ","Unit 2A","ELK",0.72,65,3,9,45,"AY","B"],
+["AZ","Unit 2B","ELK",0.72,65,3,9,58,"AY","B"],
+["AZ","Unit 2B","ELK",0.63,81.48,3,9,58,"AY","B"],
+["AZ","Unit 2A","ELK",0.63,81.48,3,9,45,"AY","B"],
+["AZ","Unit 22S","ELK",0.61,53.62,10,11,96,"BE","B"],
+["AZ","Unit 10","ELK",0.43,34.1,32,11,39,"BE","B"],
+["AZ","Unit 9","ELK",0.41,35,22,11,77,"BE","B"],
+["AZ","Unit 27","ELK",0.23,82.32,25,12,95,"BE","B"],
+["AZ","Unit 18B","ELK",0.21,67.86,3,10,60,"BE","B"],
+["AZ","Unit 17B","ELK",0.21,67.86,3,10,79,"BE","B"],
+["AZ","Unit 19B","ELK",0.21,67.86,3,10,39,"BE","B"],
+["AZ","Unit 20C","ELK",0.21,67.86,3,10,78,"BE","B"],
+["AZ","Unit 17A","ELK",0.21,67.86,3,10,71,"BE","B"],
+["AZ","Unit 20A","ELK",0.21,67.86,3,10,82,"BE","B"],
+["AZ","Unit 15A","ELK",0.16,73.33,3,9,80,"BE","B"],
+["AZ","Unit 18A","ELK",0.16,73.33,3,9,52,"BE","B"],
+["AZ","Unit 15B","ELK",0.16,73.33,3,9,67,"BE","B"],
+["AZ","Unit 27","ELK",0.125,88.04,25,11,95,"BE","B"],
+["AZ","Unit 23","ELK",0.089,68.75,21,11,98,"BE","B"],
+["AZ","Unit 22N","ELK",0.088,92.31,3,9,94,"BE","B"],
+["AZ","Unit 1","ELK",0.083,100,22,11,91,"BE","B"],
+["AZ","Unit 2C","ELK",0.083,100,22,11,61,"BE","B"],
+["AZ","Unit 2B","ELK",0.083,100,22,11,58,"BE","B"],
+["AZ","Unit 4B","ELK",0.053,80,1,9,47,"BE","B"],
+["AZ","Unit 3C","ELK",0.010,87.88,4,9,82,"BE","B"],
+["AZ","Unit 10","ELK",0.006,87.88,4,9,39,"BE","B"],
+["AZ","Unit 23N","ELK",0.005,86.67,2,9,97,"BE","B"],
+["AZ","Unit 24A","ELK",0,100,0,10,86,"AY","B"],
+];
+
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const STATE_COLORS = { ID: '#3fb950', OR: '#f0883e', AZ: '#58a6ff', WA: '#a371f7' };
+const SPECIES_LABELS = { ELK: 'Elk', MULE: 'Mule Deer', WHITETAIL: 'Whitetail', COUES: 'Coues', BLACKTAIL: 'Blacktail' };
+const BAG_LABELS = { AE:'Antlered', AA:'Antlered/Antlerless', AY:'Any', BE:'Bull Elk', OB:'One Bull', '3P':'One 3pt+ Bull' };
+const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let sortCol = 'score', sortDir = -1;
+let filters = {
+  species: new Set(['ELK']),
+  states: new Set(['WA','ID','OR','AZ']),
+  odds: new Set(['P','R','B']),
+  bags: new Set(['AE','AA','BE','AY','OB','3P']),
+  months: new Set([8,9,10,11,12]),
+  minDraw: 0,
+  minHarvest: 0,
+  minPub: 0
+};
+
+// ─── VALUE SCORE ────────────────────────────────────────────────────────────
+function valueScore(drawOdds, harvestRate) {
+  if (drawOdds == null || harvestRate == null) return null;
+  return Math.round(harvestRate * Math.sqrt(drawOdds / 100) * 10) / 10;
+}
+
+// ─── FILTER ─────────────────────────────────────────────────────────────────
+function applyFilters() {
+  return RAW.filter(r => {
+    const [state, unit, species, drawOdds, hr, tags, month, pub, bag, ot] = r;
+    if (!filters.species.has(species)) return false;
+    if (!filters.states.has(state)) return false;
+    if (!filters.odds.has(ot)) return false;
+    if (!filters.bags.has(bag)) return false;
+    if (!filters.months.has(month)) return false;
+    if (drawOdds < filters.minDraw) return false;
+    if (hr !== null && hr < filters.minHarvest) return false;
+    if (pub !== null && pub < filters.minPub) return false;
+    return true;
+  }).map(r => {
+    const [state, unit, species, drawOdds, hr, tags, month, pub, bag, ot] = r;
+    return { state, unit, species, drawOdds, harvestRate: hr, tags, month, pub, bag, oddsType: ot,
+             score: valueScore(drawOdds, hr) };
+  });
+}
+
+// ─── CHART ──────────────────────────────────────────────────────────────────
+let myChart = null;
+function buildChart(data) {
+  const plotData = data.filter(d => d.drawOdds > 0 && d.harvestRate != null);
+  const states = [...new Set(RAW.map(r => r[0]))];
+
+  const datasets = states.map(state => ({
+    label: state,
+    data: plotData.filter(d => d.state === state).map(d => ({
+      x: d.drawOdds, y: d.harvestRate,
+      r: Math.max(4, Math.min(16, Math.sqrt(Math.max(1, d.tags || 1)) * 2.5)),
+      _d: d
+    })),
+    backgroundColor: STATE_COLORS[state] + '99',
+    borderColor: STATE_COLORS[state],
+    borderWidth: 1.5,
+    pointHoverRadius: 8,
+  }));
+
+  const ctx = document.getElementById('chart').getContext('2d');
+  if (myChart) myChart.destroy();
+  myChart = new Chart(ctx, {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: {
+        legend: {
+          labels: { color: '#8b949e', font: { size: 11 }, padding: 16,
+            generateLabels: (chart) => chart.data.datasets.map((ds, i) => ({
+              text: ds.label, fillStyle: ds.backgroundColor, strokeStyle: ds.borderColor,
+              lineWidth: 1.5, hidden: false, index: i
+            }))
+          }
+        },
+        tooltip: {
+          backgroundColor: '#21262d', borderColor: '#30363d', borderWidth: 1,
+          titleColor: '#e6edf3', bodyColor: '#8b949e', padding: 10,
+          callbacks: {
+            title: (items) => items[0].raw._d.unit,
+            label: (item) => {
+              const d = item.raw._d;
+              const s = valueScore(d.drawOdds, d.harvestRate);
+              return [
+                `State: ${d.state}`,
+                `Species: ${SPECIES_LABELS[d.species] || d.species}`,
+                `Draw: ${d.drawOdds.toFixed(2)}%`,
+                `Harvest: ${d.harvestRate}%`,
+                `Tags: ${d.tags ?? 'N/A'}`,
+                `Bag: ${BAG_LABELS[d.bag] || d.bag}`,
+                `Start: ${MONTH_NAMES[d.month]}`,
+                `Public: ${d.pub != null ? d.pub + '%' : '?'}`,
+                `Value Score: ${s ?? 'N/A'}`,
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Draw Odds (%)', color: '#8b949e', font: { size: 12 } },
+          ticks: { color: '#8b949e' },
+          grid: { color: '#21262d' },
+          border: { color: '#30363d' }
+        },
+        y: {
+          title: { display: true, text: 'Harvest Rate (%)', color: '#8b949e', font: { size: 12 } },
+          ticks: { color: '#8b949e' },
+          grid: { color: '#21262d' },
+          border: { color: '#30363d' },
+          min: 0, max: 105
+        }
+      }
+    }
+  });
+}
+
+// ─── TABLE ──────────────────────────────────────────────────────────────────
+function buildTable(data) {
+  let sorted = [...data];
+  sorted.sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (av === null || av === undefined) av = -Infinity;
+    if (bv === null || bv === undefined) bv = -Infinity;
+    return (av > bv ? 1 : av < bv ? -1 : 0) * sortDir;
+  });
+
+  const maxScore = Math.max(...sorted.map(d => d.score || 0), 1);
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = sorted.map(d => {
+    const scoreBar = d.score ? `<span class="score-bar" style="width:${Math.round(d.score/maxScore*60)}px"></span>${d.score.toFixed(1)}` : '<span class="null-val">N/A</span>';
+    const hr = d.harvestRate != null ? `<span class="${d.harvestRate >= 50 ? 'highlight' : ''}">${d.harvestRate.toFixed(0)}%</span>` : '<span class="null-val">N/A</span>';
+    const draw = `<span class="${d.drawOdds >= 5 ? 'highlight' : ''}">${d.drawOdds.toFixed(2)}%</span>`;
+    const oddsLabel = d.oddsType === 'P' ? '' : d.oddsType === 'R' ? ' <span style="color:#d29922;font-size:10px">(pts)</span>' : ' <span style="color:#bc8cff;font-size:10px">(bonus)</span>';
+    return `<tr>
+      <td><span class="state-badge state-${d.state}">${d.state}</span></td>
+      <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
+      <td>${d.unit}</td>
+      <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
+      <td>${draw}${oddsLabel}</td>
+      <td>${hr}</td>
+      <td>${d.tags ?? '<span class="null-val">N/A</span>'}</td>
+      <td>${MONTH_NAMES[d.month] || d.month}</td>
+      <td>${d.pub != null ? d.pub + '%' : '<span class="null-val">N/A</span>'}</td>
+      <td>${scoreBar}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── KPI ────────────────────────────────────────────────────────────────────
+function updateKPIs(data) {
+  const withDraw = data.filter(d => d.drawOdds > 0);
+  const withHarvest = data.filter(d => d.harvestRate != null);
+  document.getElementById('kpiCount').textContent = data.length;
+  document.getElementById('kpiDraw').textContent = withDraw.length
+    ? (withDraw.reduce((s,d) => s + d.drawOdds, 0) / withDraw.length).toFixed(1) + '%' : '–';
+  document.getElementById('kpiHarvest').textContent = withHarvest.length
+    ? (withHarvest.reduce((s,d) => s + d.harvestRate, 0) / withHarvest.length).toFixed(0) + '%' : '–';
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────────────────
+function render() {
+  const data = applyFilters();
+  buildChart(data);
+  buildTable(data);
+  updateKPIs(data);
+}
+
+// ─── EVENT LISTENERS ────────────────────────────────────────────────────────
+document.querySelectorAll('input[data-filter="species"]').forEach(el => {
+  el.addEventListener('change', () => {
+    if (el.checked) filters.species.add(el.value);
+    else filters.species.delete(el.value);
+    render();
+  });
+});
+document.querySelectorAll('input[data-filter="state"]').forEach(el => {
+  el.addEventListener('change', () => {
+    if (el.checked) filters.states.add(el.value);
+    else filters.states.delete(el.value);
+    render();
+  });
+});
+document.querySelectorAll('input[data-filter="odds"]').forEach(el => {
+  el.addEventListener('change', () => {
+    if (el.checked) filters.odds.add(el.value);
+    else filters.odds.delete(el.value);
+    render();
+  });
+});
+document.querySelectorAll('input[data-filter="bag"]').forEach(el => {
+  el.addEventListener('change', () => {
+    if (el.checked) filters.bags.add(el.value);
+    else filters.bags.delete(el.value);
+    render();
+  });
+});
+
+document.getElementById('monthBtns').addEventListener('click', e => {
+  if (!e.target.dataset.month) return;
+  const m = parseInt(e.target.dataset.month);
+  e.target.classList.toggle('active');
+  if (filters.months.has(m)) filters.months.delete(m);
+  else filters.months.add(m);
+  render();
+});
+
+const drawSlider = document.getElementById('minDraw');
+drawSlider.addEventListener('input', () => {
+  filters.minDraw = parseFloat(drawSlider.value);
+  document.getElementById('drawOddsVal').textContent = drawSlider.value + '%';
+  render();
+});
+const harvestSlider = document.getElementById('minHarvest');
+harvestSlider.addEventListener('input', () => {
+  filters.minHarvest = parseInt(harvestSlider.value);
+  document.getElementById('harvestVal').textContent = harvestSlider.value + '%';
+  render();
+});
+const pubSlider = document.getElementById('minPub');
+pubSlider.addEventListener('input', () => {
+  filters.minPub = parseInt(pubSlider.value);
+  document.getElementById('pubPctVal').textContent = pubSlider.value + '%';
+  render();
+});
+
+document.querySelectorAll('#dataTable th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    document.querySelectorAll('#dataTable th').forEach(t => t.className = t.dataset.col ? 'sort-icon' : '');
+    if (sortCol === th.dataset.col) { sortDir *= -1; }
+    else { sortCol = th.dataset.col; sortDir = -1; }
+    th.className = sortDir === -1 ? 'sort-desc' : 'sort-asc';
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
