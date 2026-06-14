@@ -68,7 +68,7 @@
 <header>
   <div>
     <h1>🦌 Hunting Unit Scout</h1>
-    <p>Draw Odds vs Harvest Rate &middot; 2024&ndash;2025 Data &middot; WA &middot; ID &middot; OR &middot; AZ</p>
+    <p>Draw Odds vs Harvest Rate &middot; 2024&ndash;2025 Data &middot; Elk + Mule Deer + Coues &middot; WA &middot; ID &middot; OR &middot; AZ</p>
   </div>
 </header>
 
@@ -78,9 +78,9 @@
     <div class="filter-group">
       <label class="group-label">Species</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="ELK" checked> Elk</label>
-      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="MULE" disabled> Mule Deer <span class="coming-soon">soon</span></label>
+      <label class="check-item"><input type="checkbox" data-filter="species" value="MULE" checked> Mule Deer</label>
       <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="WHITETAIL" disabled> Whitetail <span class="coming-soon">soon</span></label>
-      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="COUES" disabled> Coues <span class="coming-soon">soon</span></label>
+      <label class="check-item"><input type="checkbox" data-filter="species" value="COUES" checked> Coues</label>
       <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="BLACKTAIL" disabled> Blacktail <span class="coming-soon">soon</span></label>
     </div>
 
@@ -416,6 +416,46 @@ const RAW = [
 ["AZ","Unit 10","ELK",0.006,87.88,4,9,39,"BE","B"],
 ["AZ","Unit 23N","ELK",0.005,86.67,2,9,97,"BE","B"],
 ["AZ","Unit 24A","ELK",0,100,0,10,86,"AY","B"],
+// ── IDAHO MULE DEER (Huntin' Fool 2025, controlled rifle antlered) ──
+["ID","Unit 60-1","MULE",100,null,25,10,79,"AE","P"],
+["ID","Unit 62","MULE",100,null,5,10,26,"AE","P"],
+["ID","Unit 39-1","MULE",67.79,50,200,10,86,"AE","P"],
+["ID","Unit 62","MULE",42.49,null,10,10,26,"AE","P"],
+["ID","Unit 14","MULE",31.88,null,19,10,67,"AE","P"],
+["ID","Unit 14","MULE",30.83,null,19,11,67,"AE","P"],
+["ID","Unit 47","MULE",27.82,55,4,10,74,"AE","P"],
+["ID","Unit 11A","MULE",26.71,null,5,10,1,"AE","P"],
+// ── ARIZONA MULE DEER (Huntin' Fool 2025, general season rifle antlered) ──
+["AZ","Unit 30B","MULE",45.39,27.9,32,11,52,"AE","B"],
+["AZ","Unit 30B","MULE",29.11,29.6,32,10,52,"AE","B"],
+["AZ","Unit 42","MULE",17.43,43.8,27,11,71,"AA","B"],
+["AZ","Unit 30A","MULE",16.77,41.6,15,11,49,"AE","B"],
+["AZ","Unit 20B","MULE",15.4,23.8,22,11,85,"AA","B"],
+// ── ARIZONA COUES DEER (Huntin' Fool 2025, general season rifle) ──
+["AZ","Unit 36A","COUES",52.91,40.1,37,10,69,"AE","B"],
+["AZ","Unit 35A","COUES",50.67,45.6,37,11,68,"AE","B"],
+["AZ","Unit 24A","COUES",43.53,43.7,27,11,86,"AE","B"],
+["AZ","Unit 36A","COUES",40.76,48.5,40,11,69,"AE","B"],
+["AZ","Unit 6B","COUES",40.34,42.9,5,10,96,"AE","B"],
+["AZ","Unit 35B","COUES",37.79,33.2,42,10,63,"AE","B"],
+["AZ","Unit 35A","COUES",35.64,32.5,37,10,68,"AE","B"],
+["AZ","Unit 34A","COUES",31.7,30,67,11,61,"AE","B"],
+["AZ","Unit 30B","COUES",30.91,41.2,10,10,52,"AE","B"],
+["AZ","Unit 30B","COUES",29.4,55.4,10,11,52,"AE","B"],
+["AZ","Unit 35A","COUES",28.05,40.5,35,11,68,"AE","B"],
+["AZ","Unit 36A","COUES",27.6,36.4,37,11,69,"AE","B"],
+["AZ","Unit 34A","COUES",26.92,42.6,67,10,61,"AE","B"],
+["AZ","Unit 34B","COUES",26.03,59,12,11,77,"AE","B"],
+["AZ","Unit 24A","COUES",25.85,39,27,10,86,"AE","B"],
+["AZ","Unit 30A","COUES",23.93,39.7,17,11,49,"AE","B"],
+["AZ","Unit 30A","COUES",22.89,50.7,17,10,49,"AE","B"],
+["AZ","Unit 36B","COUES",22.48,34.2,72,10,86,"AE","B"],
+["AZ","Unit 24B","COUES",21.84,53.9,27,11,94,"AE","B"],
+["AZ","Unit 32","COUES",21.43,52.9,27,11,74,"AE","B"],
+["AZ","Unit 24A","COUES",21.36,58.5,27,11,86,"AE","B"],
+["AZ","Unit 34B","COUES",21.31,48.1,15,10,77,"AE","B"],
+["AZ","Unit 36B","COUES",18.95,30.5,70,11,86,"AE","B"],
+["AZ","Unit 35B","COUES",18.05,49.2,35,11,63,"AE","B"],
 ];
 
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
@@ -427,7 +467,7 @@ const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let sortCol = 'score', sortDir = -1;
 let filters = {
-  species: new Set(['ELK']),
+  species: new Set(['ELK','MULE','COUES']),
   states: new Set(['WA','ID','OR','AZ']),
   odds: new Set(['P','R','B']),
   bags: new Set(['AE','AA','BE','AY','OB','3P']),
