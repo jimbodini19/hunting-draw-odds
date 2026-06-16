@@ -68,7 +68,7 @@
 <header>
   <div>
     <h1>🦌 Hunting Draw Odds</h1>
-    <p>Draw Odds vs Harvest Rate &middot; 2024&ndash;2025 Data &middot; Elk + Mule Deer + Coues &middot; WA &middot; ID &middot; OR &middot; AZ</p>
+    <p>Draw Odds vs Harvest Rate &middot; 2024&ndash;2025 Data &middot; Elk + Mule Deer + Coues + Blacktail + Whitetail &middot; WA &middot; ID &middot; OR &middot; AZ</p>
   </div>
 </header>
 
@@ -79,9 +79,9 @@
       <label class="group-label">Species</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="ELK" checked> Elk</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="MULE" checked> Mule Deer</label>
-      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="WHITETAIL" disabled> Whitetail <span class="coming-soon">soon</span></label>
+      <label class="check-item"><input type="checkbox" data-filter="species" value="WHITETAIL" checked> Whitetail</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="COUES" checked> Coues</label>
-      <label class="check-item species-disabled"><input type="checkbox" data-filter="species" value="BLACKTAIL" disabled> Blacktail <span class="coming-soon">soon</span></label>
+      <label class="check-item"><input type="checkbox" data-filter="species" value="BLACKTAIL" checked> Blacktail</label>
     </div>
 
     <hr class="filter-divider">
@@ -99,6 +99,7 @@
       <label class="check-item"><input type="checkbox" data-filter="odds" value="P" checked> Pointless / random</label>
       <label class="check-item"><input type="checkbox" data-filter="odds" value="R" checked> Preference pts (OR)</label>
       <label class="check-item"><input type="checkbox" data-filter="odds" value="B" checked> Bonus pts (AZ)</label>
+      <label class="check-item"><input type="checkbox" data-filter="odds" value="G" checked> General / OTC</label>
     </div>
 
     <div class="filter-group">
@@ -456,6 +457,56 @@ const RAW = [
 ["AZ","Unit 34B","COUES",21.31,48.1,15,10,77,"AE","B"],
 ["AZ","Unit 36B","COUES",18.95,30.5,70,11,86,"AE","B"],
 ["AZ","Unit 35B","COUES",18.05,49.2,35,11,63,"AE","B"],
+// ── WASHINGTON BLACKTAIL (general season OTC, WDFW 2024 modern-firearm antlered; drawOdds=100 OTC, harvest=success%, tags=buck harvest volume) ──
+["WA","407 North Sound","BLACKTAIL",100,34,355,10,null,"AE","G"],
+["WA","454 Issaquah","BLACKTAIL",100,36,115,10,null,"AE","G"],
+["WA","420 Whidbey","BLACKTAIL",100,48,186,10,null,"AE","G"],
+["WA","460 Snoqualmie","BLACKTAIL",100,20,88,10,null,"AE","G"],
+["WA","466 Stampede","BLACKTAIL",100,10,10,10,null,"AE","G"],
+["WA","437 Sauk","BLACKTAIL",100,20,126,10,null,"AE","G"],
+["WA","448 Stillaguamish","BLACKTAIL",100,21,116,10,null,"AE","G"],
+["WA","564 Battle Ground","BLACKTAIL",100,42,421,10,null,"AE","G"],
+["WA","568 Washougal","BLACKTAIL",100,32,547,10,null,"AE","G"],
+["WA","505 Mossyrock","BLACKTAIL",100,38,340,10,null,"AE","G"],
+["WA","520 Winston","BLACKTAIL",100,35,424,10,null,"AE","G"],
+["WA","504 Stella","BLACKTAIL",100,45,58,10,null,"AE","G"],
+["WA","501 Lincoln","BLACKTAIL",100,33,331,10,null,"AE","G"],
+["WA","506 Willapa Hills","BLACKTAIL",100,32,303,10,null,"AE","G"],
+// ── WASHINGTON WHITETAIL (NE general season OTC, WDFW 2024 modern-firearm antlered) ──
+["WA","101 Sherman","WHITETAIL",100,18,392,10,null,"AE","G"],
+["WA","105 Kelly Hill","WHITETAIL",100,35,246,10,null,"AE","G"],
+["WA","108 Douglas","WHITETAIL",100,31,255,10,null,"AE","G"],
+["WA","111 Aladdin","WHITETAIL",100,28,298,10,null,"AE","G"],
+["WA","113 Selkirk","WHITETAIL",100,16,181,10,null,"AE","G"],
+["WA","117 49 Degrees North","WHITETAIL",100,21,533,10,null,"AE","G"],
+["WA","121 Huckleberry","WHITETAIL",100,31,1128,10,null,"AE","G"],
+["WA","124 Mt Spokane","WHITETAIL",100,27,613,10,null,"AE","G"],
+["WA","139 Steptoe","WHITETAIL",100,38,318,10,null,"AE","G"],
+["WA","145 Mayview","WHITETAIL",100,50,228,10,null,"AE","G"],
+["WA","149 Prescott","WHITETAIL",100,33,450,10,null,"AE","G"],
+// ── IDAHO WHITETAIL (Panhandle general 'Any Weapon', IDFG 2025; tags=antlered harvest) ──
+["ID","Unit 1","WHITETAIL",100,37,2010,10,null,"AE","G"],
+["ID","Unit 2","WHITETAIL",100,36,864,10,null,"AE","G"],
+["ID","Unit 3","WHITETAIL",100,34,844,10,null,"AE","G"],
+["ID","Unit 5","WHITETAIL",100,40,721,10,null,"AE","G"],
+["ID","Unit 6","WHITETAIL",100,42,1154,10,null,"AE","G"],
+["ID","Unit 8","WHITETAIL",100,31,404,10,null,"AE","G"],
+["ID","Unit 8A","WHITETAIL",100,37,1025,10,null,"AE","G"],
+["ID","Unit 10A","WHITETAIL",100,47,2036,10,null,"AE","G"],
+["ID","Unit 11","WHITETAIL",100,39,454,10,null,"AE","G"],
+// ── OREGON BLACKTAIL (General Western Deer OTC, ODFW 2024; tags=total buck harvest) ──
+["OR","Scappoose","BLACKTAIL",100,34,962,10,null,"AE","G"],
+["OR","Saddle Mountain","BLACKTAIL",100,23,886,10,null,"AE","G"],
+["OR","Trask","BLACKTAIL",100,25,1454,10,null,"AE","G"],
+["OR","Wilson","BLACKTAIL",100,21,487,10,null,"AE","G"],
+["OR","Willamette","BLACKTAIL",100,31,1486,10,null,"AE","G"],
+["OR","Santiam","BLACKTAIL",100,26,2013,10,null,"AE","G"],
+["OR","Mckenzie","BLACKTAIL",100,33,1667,10,null,"AE","G"],
+["OR","Stott Mountain","BLACKTAIL",100,35,562,10,null,"AE","G"],
+["OR","Melrose","BLACKTAIL",100,52,1688,10,null,"AE","G"],
+["OR","Sixes","BLACKTAIL",100,55,584,10,null,"AE","G"],
+["OR","Chetco","BLACKTAIL",100,47,921,10,null,"AE","G"],
+["OR","Dixon","BLACKTAIL",100,44,1669,10,null,"AE","G"],
 ];
 
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
@@ -467,9 +518,9 @@ const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let sortCol = 'score', sortDir = -1;
 let filters = {
-  species: new Set(['ELK','MULE','COUES']),
+  species: new Set(['ELK','MULE','COUES','WHITETAIL','BLACKTAIL']),
   states: new Set(['WA','ID','OR','AZ']),
-  odds: new Set(['P','R','B']),
+  odds: new Set(['P','R','B','G']),
   bags: new Set(['AE','AA','BE','AY','OB','3P']),
   months: new Set([8,9,10,11,12]),
   minDraw: 0,
@@ -598,7 +649,7 @@ function buildTable(data) {
     const scoreBar = d.score ? `<span class="score-bar" style="width:${Math.round(d.score/maxScore*60)}px"></span>${d.score.toFixed(1)}` : '<span class="null-val">N/A</span>';
     const hr = d.harvestRate != null ? `<span class="${d.harvestRate >= 50 ? 'highlight' : ''}">${d.harvestRate.toFixed(0)}%</span>` : '<span class="null-val">N/A</span>';
     const draw = `<span class="${d.drawOdds >= 5 ? 'highlight' : ''}">${d.drawOdds.toFixed(2)}%</span>`;
-    const oddsLabel = d.oddsType === 'P' ? '' : d.oddsType === 'R' ? ' <span style="color:#d29922;font-size:10px">(pts)</span>' : ' <span style="color:#bc8cff;font-size:10px">(bonus)</span>';
+    const oddsLabel = d.oddsType === 'R' ? ' <span style="color:#d29922;font-size:10px">(pts)</span>' : d.oddsType === 'B' ? ' <span style="color:#bc8cff;font-size:10px">(bonus)</span>' : d.oddsType === 'G' ? ' <span style="color:#3fb950;font-size:10px">(OTC)</span>' : '';
     return `<tr>
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
