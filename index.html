@@ -527,7 +527,14 @@ function unitMapQuery(d){
   if(d.state==='AZ') return 'Arizona Game Management Unit '+u.replace(/^Unit\s*/i,'');
   return u+', '+full;
 }
-function unitMapUrl(d){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(unitMapQuery(d)); }
+function unitMapUrl(d){
+  // WA: official WDFW GMU boundary map PDF (numbered GMUs)
+  if(d.state==='WA'){ const m=d.unit.match(/^(\d{3})/); if(m) return 'https://wdfw.wa.gov/sites/default/files/webmaps/gmu/GMU_'+m[1]+'.pdf'; }
+  // AZ: official AZGFD GMU page (map + boundary + species)
+  if(d.state==='AZ'){ const m=d.unit.match(/^Unit\s*([0-9]+[A-Za-z]*)/i); if(m) return 'https://www.azgfd.com/location/gmu-'+m[1].toLowerCase()+'/'; }
+  // ID / OR / un-numbered WA & AZ hunts: Google Maps centered on the place
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(unitMapQuery(d));
+}
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let sortCol = 'score', sortDir = -1;
@@ -667,7 +674,7 @@ function buildTable(data) {
     return `<tr>
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
-      <td><a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on Google Maps">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
+      <td><a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
       <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
       <td>${draw}${oddsLabel}</td>
       <td>${hr}</td>
