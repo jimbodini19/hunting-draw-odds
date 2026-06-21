@@ -516,6 +516,19 @@ const SPECIES_LABELS = { ELK: 'Elk', MULE: 'Mule Deer', WHITETAIL: 'Whitetail', 
 const BAG_LABELS = { AE:'Antlered', AA:'Antlered/Antlerless', AY:'Any', BE:'Bull Elk', OB:'One Bull', '3P':'One 3pt+ Bull' };
 const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
 
+// ─── UNIT MAP LINK ──────────────────────────────────────────────────────────
+// Builds a Google Maps search per row. Named WA/OR units pin precisely;
+// numbered ID/AZ units land in the right state/area (no exact GMU boundary).
+function unitMapQuery(d){
+  const u=d.unit, full={WA:'Washington',ID:'Idaho',OR:'Oregon',AZ:'Arizona'}[d.state]||d.state;
+  if(d.state==='WA') return u.replace(/^\d+\s*/,'')+', Washington';        // "460 Snoqualmie" -> "Snoqualmie, Washington"
+  if(d.state==='OR') return u.replace(/-\w+$/,'').trim()+', Oregon';        // "E Central Cascades-234X" -> "E Central Cascades, Oregon"
+  if(d.state==='ID') return 'Idaho Game Management Unit '+u.replace(/^Unit\s*/i,'');
+  if(d.state==='AZ') return 'Arizona Game Management Unit '+u.replace(/^Unit\s*/i,'');
+  return u+', '+full;
+}
+function unitMapUrl(d){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(unitMapQuery(d)); }
+
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let sortCol = 'score', sortDir = -1;
 let filters = {
@@ -654,7 +667,7 @@ function buildTable(data) {
     return `<tr>
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
-      <td>${d.unit}</td>
+      <td><a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on Google Maps">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
       <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
       <td>${draw}${oddsLabel}</td>
       <td>${hr}</td>
