@@ -77,6 +77,11 @@
   <div class="filters">
 
     <div class="filter-group">
+      <label class="group-label">Filter by Unit</label>
+      <input type="text" id="unitSearch" placeholder="Snoqualmie, 460, 8A..." autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 8px;font-size:12px;outline:none">
+    </div>
+
+    <div class="filter-group">
       <label class="group-label">Species</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="ELK" checked> Elk</label>
       <label class="check-item"><input type="checkbox" data-filter="species" value="MULE" checked> Mule Deer</label>
@@ -166,6 +171,7 @@
             <th data-col="state" class="sort-icon">State</th>
             <th data-col="species" class="sort-icon">Species</th>
             <th data-col="unit" class="sort-icon">Unit</th>
+            <th data-col="miles" class="sort-icon">Miles</th>
             <th data-col="bag" class="sort-icon">Bag</th>
             <th data-col="drawOdds" class="sort-icon">Draw %</th>
             <th data-col="harvestRate" class="sort-icon">Harvest %</th>
@@ -536,6 +542,35 @@ function unitMapUrl(d){
   return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(unitMapQuery(d));
 }
 
+// ─── DISTANCE FROM WOODINVILLE ──────────────────────────────────────────────
+const HOME = { lat: 47.754, lng: -122.163 }; // Woodinville, WA
+function milesFrom(lat, lng){
+  const R = 3958.8, toRad = x => x*Math.PI/180;
+  const dLat = toRad(lat-HOME.lat), dLng = toRad(lng-HOME.lng);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(HOME.lat))*Math.cos(toRad(lat))*Math.sin(dLng/2)**2;
+  return R*2*Math.asin(Math.sqrt(a)); // straight-line miles
+}
+// Approximate unit centroids (good enough to rank by proximity), keyed "STATE|unit"
+const UNIT_COORDS = {
+  "WA|407 North Sound":[48.30,-122.05],"WA|454 Issaquah":[47.45,-121.85],"WA|420 Whidbey":[48.15,-122.55],
+  "WA|460 Snoqualmie":[47.55,-121.65],"WA|466 Stampede":[47.30,-121.35],"WA|437 Sauk":[48.25,-121.55],
+  "WA|448 Stillaguamish":[48.20,-121.75],"WA|564 Battle Ground":[45.85,-122.40],"WA|568 Washougal":[45.70,-122.10],
+  "WA|505 Mossyrock":[46.50,-122.40],"WA|520 Winston":[46.45,-122.85],"WA|504 Stella":[46.20,-123.00],
+  "WA|501 Lincoln":[46.30,-123.25],"WA|506 Willapa Hills":[46.50,-123.40],
+  "WA|101 Sherman":[48.70,-118.40],"WA|105 Kelly Hill":[48.80,-118.15],"WA|108 Douglas":[48.90,-117.90],
+  "WA|111 Aladdin":[48.85,-117.50],"WA|113 Selkirk":[48.95,-117.20],"WA|117 49 Degrees North":[48.50,-117.65],
+  "WA|121 Huckleberry":[48.30,-118.00],"WA|124 Mt Spokane":[47.92,-117.12],"WA|139 Steptoe":[47.00,-117.35],
+  "WA|145 Mayview":[46.40,-117.55],"WA|149 Prescott":[46.30,-118.30],
+  "ID|Unit 1":[48.90,-116.50],"ID|Unit 2":[48.55,-116.80],"ID|Unit 3":[48.30,-116.55],"ID|Unit 5":[46.90,-116.45],
+  "ID|Unit 6":[46.80,-115.95],"ID|Unit 8":[46.70,-116.65],"ID|Unit 8A":[46.85,-116.40],"ID|Unit 10A":[46.45,-116.30],
+  "ID|Unit 11":[46.15,-117.05],
+  "OR|Scappoose":[45.85,-123.00],"OR|Saddle Mountain":[45.95,-123.60],"OR|Trask":[45.40,-123.50],
+  "OR|Wilson":[45.60,-123.50],"OR|Willamette":[44.50,-122.40],"OR|Santiam":[44.70,-122.30],
+  "OR|Mckenzie":[44.20,-122.30],"OR|Stott Mountain":[44.80,-123.65],"OR|Melrose":[43.20,-123.45],
+  "OR|Sixes":[42.80,-124.20],"OR|Chetco":[42.10,-124.10],"OR|Dixon":[43.50,-122.90]
+};
+function unitMiles(state, unit){ const c = UNIT_COORDS[state+"|"+unit]; return c ? Math.round(milesFrom(c[0],c[1])) : null; }
+
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let sortCol = 'score', sortDir = -1;
 let filters = {
@@ -546,7 +581,8 @@ let filters = {
   months: new Set([8,9,10,11,12]),
   minDraw: 0,
   minHarvest: 0,
-  minPub: 0
+  minPub: 0,
+  unitText: ''
 };
 
 // ─── VALUE SCORE ────────────────────────────────────────────────────────────
@@ -564,6 +600,7 @@ function applyFilters() {
     if (!filters.odds.has(ot)) return false;
     if (!filters.bags.has(bag)) return false;
     if (!filters.months.has(month)) return false;
+    if (filters.unitText && !unit.toLowerCase().includes(filters.unitText)) return false;
     if (drawOdds < filters.minDraw) return false;
     if (hr !== null && hr < filters.minHarvest) return false;
     if (pub !== null && pub < filters.minPub) return false;
@@ -571,7 +608,7 @@ function applyFilters() {
   }).map(r => {
     const [state, unit, species, drawOdds, hr, tags, month, pub, bag, ot] = r;
     return { state, unit, species, drawOdds, harvestRate: hr, tags, month, pub, bag, oddsType: ot,
-             score: valueScore(drawOdds, hr) };
+             score: valueScore(drawOdds, hr), miles: unitMiles(state, unit) };
   });
 }
 
@@ -659,8 +696,9 @@ function buildTable(data) {
   let sorted = [...data];
   sorted.sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
-    if (av === null || av === undefined) av = -Infinity;
-    if (bv === null || bv === undefined) bv = -Infinity;
+    const _nv = sortCol === 'miles' ? Infinity : -Infinity;
+    if (av === null || av === undefined) av = _nv;
+    if (bv === null || bv === undefined) bv = _nv;
     return (av > bv ? 1 : av < bv ? -1 : 0) * sortDir;
   });
 
@@ -675,6 +713,7 @@ function buildTable(data) {
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
       <td><a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
+      <td>${d.miles!=null ? d.miles.toLocaleString() : '<span class="null-val">N/A</span>'}</td>
       <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
       <td>${draw}${oddsLabel}</td>
       <td>${hr}</td>
@@ -767,10 +806,15 @@ document.querySelectorAll('#dataTable th[data-col]').forEach(th => {
   th.addEventListener('click', () => {
     document.querySelectorAll('#dataTable th').forEach(t => t.className = t.dataset.col ? 'sort-icon' : '');
     if (sortCol === th.dataset.col) { sortDir *= -1; }
-    else { sortCol = th.dataset.col; sortDir = -1; }
+    else { sortCol = th.dataset.col; sortDir = (th.dataset.col === 'miles') ? 1 : -1; }
     th.className = sortDir === -1 ? 'sort-desc' : 'sort-asc';
     render();
   });
+});
+
+document.getElementById('unitSearch').addEventListener('input', e => {
+  filters.unitText = e.target.value.trim().toLowerCase();
+  render();
 });
 
 render();
