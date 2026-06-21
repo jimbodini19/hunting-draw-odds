@@ -519,6 +519,8 @@ const RAW = [
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 const STATE_COLORS = { ID: '#3fb950', OR: '#f0883e', AZ: '#58a6ff', WA: '#a371f7' };
 const SPECIES_LABELS = { ELK: 'Elk', MULE: 'Mule Deer', WHITETAIL: 'Whitetail', COUES: 'Coues', BLACKTAIL: 'Blacktail' };
+// Jimbo's planned hunts this year — highlighted in table + chart. Key = "STATE|unit".
+const TARGETS = { "WA|460 Snoqualmie": "2026 WA target" };
 const BAG_LABELS = { AE:'Antlered', AA:'Antlered/Antlerless', AY:'Any', BE:'Bull Elk', OB:'One Bull', '3P':'One 3pt+ Bull' };
 const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
 
@@ -631,6 +633,13 @@ function buildChart(data) {
     pointHoverRadius: 8,
   }));
 
+  const targetPts = plotData.filter(d => TARGETS[d.state + '|' + d.unit]);
+  if (targetPts.length) datasets.push({
+    label: '★ My target',
+    data: targetPts.map(d => ({ x: d.drawOdds, y: d.harvestRate, r: Math.max(7, Math.min(18, Math.sqrt(Math.max(1, d.tags || 1)) * 2.5 + 4)), _d: d })),
+    backgroundColor: 'transparent', borderColor: '#d29922', borderWidth: 3, pointHoverRadius: 10,
+  });
+
   const ctx = document.getElementById('chart').getContext('2d');
   if (myChart) myChart.destroy();
   myChart = new Chart(ctx, {
@@ -705,14 +714,15 @@ function buildTable(data) {
   const maxScore = Math.max(...sorted.map(d => d.score || 0), 1);
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = sorted.map(d => {
+    const isTarget = TARGETS[d.state + '|' + d.unit];
     const scoreBar = d.score ? `<span class="score-bar" style="width:${Math.round(d.score/maxScore*60)}px"></span>${d.score.toFixed(1)}` : '<span class="null-val">N/A</span>';
     const hr = d.harvestRate != null ? `<span class="${d.harvestRate >= 50 ? 'highlight' : ''}">${d.harvestRate.toFixed(0)}%</span>` : '<span class="null-val">N/A</span>';
     const draw = `<span class="${d.drawOdds >= 5 ? 'highlight' : ''}">${d.drawOdds.toFixed(2)}%</span>`;
     const oddsLabel = d.oddsType === 'R' ? ' <span style="color:#d29922;font-size:10px">(pts)</span>' : d.oddsType === 'B' ? ' <span style="color:#bc8cff;font-size:10px">(bonus)</span>' : d.oddsType === 'G' ? ' <span style="color:#3fb950;font-size:10px">(OTC)</span>' : '';
-    return `<tr>
+    return `<tr style="${isTarget ? 'background:#1c2d1e;box-shadow:inset 3px 0 0 #d29922' : ''}">
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
-      <td><a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
+      <td>${isTarget ? '<span title="'+isTarget+'" style="color:#d29922">★ </span>' : ''}<a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
       <td>${d.miles!=null ? d.miles.toLocaleString() : '<span class="null-val">N/A</span>'}</td>
       <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
       <td>${draw}${oddsLabel}</td>
