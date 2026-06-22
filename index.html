@@ -175,6 +175,7 @@
             <th data-col="bag" class="sort-icon">Bag</th>
             <th data-col="drawOdds" class="sort-icon">Draw %</th>
             <th data-col="harvestRate" class="sort-icon">Harvest %</th>
+            <th data-col="bq" class="sort-icon" title="% mature bucks (antler class). WA/OR = 4pt+; ID whitetail = 5pt+. State harvest data.">%4pt+</th>
             <th data-col="tags" class="sort-icon">Tags</th>
             <th data-col="month" class="sort-icon">Start</th>
             <th data-col="pub" class="sort-icon">Public %</th>
@@ -521,6 +522,35 @@ const STATE_COLORS = { ID: '#3fb950', OR: '#f0883e', AZ: '#58a6ff', WA: '#a371f7
 const SPECIES_LABELS = { ELK: 'Elk', MULE: 'Mule Deer', WHITETAIL: 'Whitetail', COUES: 'Coues', BLACKTAIL: 'Blacktail' };
 // Jimbo's planned hunts this year — highlighted in table + chart. Key = "STATE|unit".
 const TARGETS = { "WA|460 Snoqualmie": "2026 WA target" };
+
+// % mature bucks (antler-class share). WA & OR = 4-point-plus (Western count); ID whitetail = 5-point-plus total.
+// Sources: WDFW 2024 modern-firearm point breakdown, IDFG 2025 %5+Pts, ODFW 2024 General Western Deer point columns.
+const BUCK_QUALITY = {
+  "WA|407 North Sound":20,"WA|420 Whidbey":24,"WA|437 Sauk":14,"WA|448 Stillaguamish":12,"WA|454 Issaquah":23,
+  "WA|460 Snoqualmie":25,"WA|466 Stampede":40,"WA|501 Lincoln":6,"WA|504 Stella":5,"WA|505 Mossyrock":15,
+  "WA|506 Willapa Hills":8,"WA|520 Winston":9,"WA|564 Battle Ground":15,"WA|568 Washougal":12,
+  "WA|101 Sherman":41,"WA|105 Kelly Hill":56,"WA|108 Douglas":42,"WA|111 Aladdin":31,"WA|113 Selkirk":51,
+  "WA|117 49 Degrees North":40,"WA|121 Huckleberry":41,"WA|124 Mt Spokane":59,"WA|139 Steptoe":66,
+  "WA|145 Mayview":59,"WA|149 Prescott":63,
+  "ID|Unit 1":21,"ID|Unit 2":18,"ID|Unit 3":20,"ID|Unit 5":18,"ID|Unit 6":21,"ID|Unit 8":28,"ID|Unit 8A":23,
+  "ID|Unit 10A":24,"ID|Unit 11":22,
+  "OR|Scappoose":14,"OR|Saddle Mountain":9,"OR|Trask":17,"OR|Wilson":10,"OR|Willamette":22,"OR|Santiam":25,
+  "OR|Mckenzie":24,"OR|Stott Mountain":15,"OR|Melrose":28,"OR|Sixes":28,"OR|Chetco":19,"OR|Dixon":27
+};
+// CWD: units with mandatory testing / carcass-transport rules (2025).
+const CWD = {
+  "WA|101 Sherman":"WA Eastern Region: mandatory CWD testing + carcass transport rules","WA|105 Kelly Hill":"WA Eastern Region: mandatory CWD testing + carcass transport rules",
+  "WA|108 Douglas":"WA Eastern Region: mandatory CWD testing + carcass transport rules","WA|111 Aladdin":"WA Eastern Region: mandatory CWD testing + carcass transport rules",
+  "WA|113 Selkirk":"WA Eastern Region: mandatory CWD testing + carcass transport rules","WA|117 49 Degrees North":"WA Eastern Region: mandatory CWD testing + carcass transport rules",
+  "WA|121 Huckleberry":"WA Eastern Region: mandatory CWD testing + carcass transport rules","WA|124 Mt Spokane":"WA CWD core area (Spokane): mandatory testing + bait/transport rules",
+  "WA|139 Steptoe":"WA Eastern Region: mandatory CWD testing + carcass transport rules","WA|145 Mayview":"WA Eastern Region: mandatory CWD testing + carcass transport rules",
+  "WA|149 Prescott":"WA Eastern Region: mandatory CWD testing + carcass transport rules",
+  "ID|Unit 1":"ID CWD management zone (Unit 1): mandatory testing, CWD detected 2024"
+};
+// Access caveats surfaced on specific units.
+const ACCESS_NOTES = {
+  "WA|460 Snoqualmie":"2026: no Campbell Global motorized permit (missed window) - public NF / walk-in access only this year; gated low cuts are a next-year play."
+};
 const BAG_LABELS = { AE:'Antlered', AA:'Antlered/Antlerless', AY:'Any', BE:'Bull Elk', OB:'One Bull', '3P':'One 3pt+ Bull' };
 const MONTH_NAMES = { 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec' };
 
@@ -610,7 +640,7 @@ function applyFilters() {
   }).map(r => {
     const [state, unit, species, drawOdds, hr, tags, month, pub, bag, ot] = r;
     return { state, unit, species, drawOdds, harvestRate: hr, tags, month, pub, bag, oddsType: ot,
-             score: valueScore(drawOdds, hr), miles: unitMiles(state, unit) };
+             score: valueScore(drawOdds, hr), miles: unitMiles(state, unit), bq: BUCK_QUALITY[state+'|'+unit] ?? null };
   });
 }
 
@@ -722,11 +752,12 @@ function buildTable(data) {
     return `<tr style="${isTarget ? 'background:#1c2d1e;box-shadow:inset 3px 0 0 #d29922' : ''}">
       <td><span class="state-badge state-${d.state}">${d.state}</span></td>
       <td><span class="species-badge">${SPECIES_LABELS[d.species] || d.species}</span></td>
-      <td>${isTarget ? '<span title="'+isTarget+'" style="color:#d29922">★ </span>' : ''}<a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a></td>
+      <td>${isTarget ? '<span title="'+isTarget+'" style="color:#d29922">★ </span>' : ''}<a href="${unitMapUrl(d)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none" title="Show ${d.unit} on map">${d.unit} <span style="opacity:.45;font-size:10px">↗</span></a>${CWD[d.state+'|'+d.unit] ? ' <span style="background:#3d2a00;color:#d29922;border-radius:3px;padding:0 4px;font-size:9px;font-weight:600;cursor:help" title="'+CWD[d.state+'|'+d.unit]+'">CWD</span>' : ''}${ACCESS_NOTES[d.state+'|'+d.unit] ? ' <span style="color:#f0883e;cursor:help" title="'+ACCESS_NOTES[d.state+'|'+d.unit]+'">&#9888;</span>' : ''}</td>
       <td>${d.miles!=null ? d.miles.toLocaleString() : '<span class="null-val">N/A</span>'}</td>
       <td style="color:#8b949e">${BAG_LABELS[d.bag] || d.bag}</td>
       <td>${draw}${oddsLabel}</td>
       <td>${hr}</td>
+      <td>${d.bq!=null ? '<span class="'+(d.bq>=30?'highlight':'')+'">'+d.bq+'%</span>' : '<span class="null-val">N/A</span>'}</td>
       <td>${d.tags ?? '<span class="null-val">N/A</span>'}</td>
       <td>${MONTH_NAMES[d.month] || d.month}</td>
       <td>${d.pub != null ? d.pub + '%' : '<span class="null-val">N/A</span>'}</td>
